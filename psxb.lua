@@ -267,21 +267,53 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 	end
 	
 	local success, result = pcall(function()
-		local GetRemoteFunction = debug.getupvalue(Library.Network.Invoke, 2)
-		local coinsScript = getsenv(LocalPlayer.PlayerScripts.Scripts.Game.Coins)
-		local petsScript = getsenv(LocalPlayer.PlayerScripts.Scripts.Game.Pets)
-		
-		if not coinsScript or not petsScript then 
-			error("Failed to get required game scripts")
+		-- Safely obtain required functions/tables with retries to avoid "invalid argument #1" errors
+		local GetRemoteFunction = nil
+		local coinsScript = nil
+		local petsScript = nil
+	
+		-- Try to retrieve the Network Invoke upvalue if available
+		if Library and Library.Network and Library.Network.Invoke then
+			pcall(function()
+				GetRemoteFunction = debug.getupvalue(Library.Network.Invoke, 2)
+			end)
+	
+		-- Retrieve script environments with retries
+		local attempts = 0
+		repeat
+			coinsScript = pcall(function() return getsenv(LocalPlayer.PlayerScripts.Scripts.Game.Coins) end) and getsenv(LocalPlayer.PlayerScripts.Scripts.Game.Coins) or nil
+			if coinsScript and type(coinsScript.DestroyAllCoins) == "function" then break end
+			attempts = attempts + 1
+			task.wait(0.5)
+		until attempts >= 6
+		if not coinsScript or type(coinsScript.DestroyAllCoins) ~= "function" then
+			error("Coins script or DestroyAllCoins not available")
 		end
-		
-		local CoinsTable = debug.getupvalue(coinsScript.DestroyAllCoins, 1)
-		local RenderedPets = debug.getupvalue(petsScript.NetworkUpdate, 1)
-		
-		if not CoinsTable or not RenderedPets then
-			error("Failed to get required game tables")
+	
+		attempts = 0
+		repeat
+			petsScript = pcall(function() return getsenv(LocalPlayer.PlayerScripts.Scripts.Game.Pets) end) and getsenv(LocalPlayer.PlayerScripts.Scripts.Game.Pets) or nil
+			if petsScript and type(petsScript.NetworkUpdate) == "function" then break end
+			attempts = attempts + 1
+			task.wait(0.5)
+		until attempts >= 6
+		if not petsScript or type(petsScript.NetworkUpdate) ~= "function" then
+			error("Pets script or NetworkUpdate not available")
 		end
-		
+	
+		-- Now it's safe to call debug.getupvalue (first arg is confirmed to be a function)
+		local CoinsTable = nil
+		local RenderedPets = nil
+		pcall(function() CoinsTable = debug.getupvalue(coinsScript.DestroyAllCoins, 1) end)
+		pcall(function() RenderedPets = debug.getupvalue(petsScript.NetworkUpdate, 1) end)
+	
+		if not CoinsTable or type(CoinsTable) ~= "table" then
+			error("Failed to get required CoinsTable")
+		end
+		if not RenderedPets or type(RenderedPets) ~= "table" then
+			error("Failed to get required RenderedPets")
+		end
+	
 		return {
 			GetRemoteFunction = GetRemoteFunction,
 			CoinsTable = CoinsTable,
