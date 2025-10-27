@@ -33,9 +33,9 @@ if _G.PSX_LOADED and _G.PSX_VERSION then
     task.wait(1)
     _G.PSX_LOADED = false
     _G.PSX_VERSION = nil
-    if _G.PSX_RAYFIELD then
-        _G.PSX_RAYFIELD:Destroy()
-    end
+	if _G.PSX_RAYFIELD and type(_G.PSX_RAYFIELD.Destroy) == "function" then
+		pcall(function() _G.PSX_RAYFIELD:Destroy() end)
+	end
 end
 
 -- Store current version info
@@ -58,17 +58,17 @@ _G.PSX_DISABLE_FUNC = function()
         BankIndex_Debounce = true
         
         -- Restore modified functions if they exist
-        if Original_OpenEgg then
-            OpenEggsScript.OpenEgg = Original_OpenEgg
-        end
-        
-        if Original_HasPower then
-            Library.Shared.HasPower = Original_HasPower
-        end
-        
-        if Original_GetPowerDir then
-            Library.Shared.GetPowerDir = Original_GetPowerDir
-        end
+		if Original_OpenEgg and OpenEggsScript and type(Original_OpenEgg) == "function" then
+			pcall(function() OpenEggsScript.OpenEgg = Original_OpenEgg end)
+		end
+
+		if Original_HasPower and Library and Library.Shared then
+			pcall(function() Library.Shared.HasPower = Original_HasPower end)
+		end
+
+		if Original_GetPowerDir and Library and Library.Shared then
+			pcall(function() Library.Shared.GetPowerDir = Original_GetPowerDir end)
+		end
         
         -- Notify user
         if Library and Library.ChatMsg then
