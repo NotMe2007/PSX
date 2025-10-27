@@ -10,7 +10,7 @@
 
 
 --[[
-loadstring(game:HttpGet("https://raw.githubusercontent.com/NotMe2007/PSX/refs/heads/main/psx.lua"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/NotMe2007/PSX/refs/heads/main/psxb.lua"))()
 -- TODO LIST:
 -- • Huge notifier on Discord Webhook (its ez but I'm lazy)
 -- • Auto quest
