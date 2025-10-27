@@ -1408,60 +1408,6 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 	
 	
 	local eggTab = Window:CreateTab("Eggs", "13075637275", true)
-	
-	-- Egg Selection Section
-	local eggSelectionSection = eggTab:CreateSection("Available Eggs", false)
-	
-	local allEggs = {}
-	local selectedEggId = nil
-	
-	-- Create buttons for each egg
-	for eggId, eggData in pairs(Library.Directory.Eggs) do
-		if eggData and not eggData.disabled and eggData.hatchable then
-			table.insert(allEggs, {
-				id = eggId,
-				name = eggData.name,
-				cost = Library.Functions.NumberShorten(eggData.cost),
-				currency = eggData.currency
-			})
-		end
-	end
-	
-	-- Sort eggs by name
-	table.sort(allEggs, function(a, b)
-		return a.name < b.name
-	end)
-	
-	for _, eggData in ipairs(allEggs) do
-		eggTab:CreateButton({
-			Name = string.format("%s (%s %s)", eggData.name, eggData.cost, eggData.currency),
-			SectionParent = eggSelectionSection,
-			Interact = selectedEggId == eggData.id and "Selected" or "Select",
-			Callback = function()
-				selectedEggId = eggData.id
-				LastOpenEggId = eggData.id
-				SaveCustomFlag("CurrentEgg", eggData.id)
-				-- Update all egg buttons
-				for _, button in pairs(eggSelectionSection.List) do
-					if button.Button and button.Button.Name then
-						local buttonEggName = string.match(button.Button.Name, "^(.+) %(")
-						local matchingEgg = nil
-						for _, egg in ipairs(allEggs) do
-							if egg.name == buttonEggName then
-								matchingEgg = egg
-								break
-							end
-						end
-						if matchingEgg then
-							button:Set(nil, matchingEgg.id == selectedEggId and "Selected" or "Select")
-						end
-					end
-				end
-			end
-		})
-	end
-
-	-- Egg Hatching Section
 	local hatchingSection = eggTab:CreateSection("Egg Hatching", false)
 	local eggInfo = eggTab:CreateParagraph({Title = "Information", Content = "Buy some egg in-game and it will be automatically selected!\nSelected Egg: %s\nMode: %s\nQuantity Hatched: %s\nQuantity Remaining: %s\n25x Insane Luck: %s\n\n\n\naaa"}, hatchingSection)
 	
@@ -1475,24 +1421,6 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 	AddCustomFlag("CurrentHatchSettings", "Normal", function(newValue) 
 		LastHatchSetting = newValue
 	end)
-	
-	-- Manual Hatch Button
-	eggTab:CreateButton({
-		Name = "Hatch Selected Egg",
-		SectionParent = hatchingSection,
-		Callback = function()
-			if not selectedEggId then
-				Library.Message.New("Please select an egg first!")
-				return
-			end
-			local tripleHatch = LastHatchSetting == "Triple"
-			local octupleHatch = LastHatchSetting == "Octuple"
-			local success, errorMessage = HatchEgg(selectedEggId, tripleHatch, octupleHatch, true)
-			if not success and errorMessage then
-				Library.Message.New(errorMessage)
-			end
-		end
-	})
 	
 	local EnableAutoHatch = false
 	eggTab:CreateToggle({
@@ -2690,3 +2618,4 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 		end
 	end)
 end
+
