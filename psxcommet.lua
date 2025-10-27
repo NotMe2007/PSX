@@ -1,4 +1,4 @@
---
+-- loadstring(game:HttpGet("https://raw.githubusercontent.com/NotMe2007/PSX/refs/heads/main/psxcommet.lua"))()
 -- This file was generated using Luraph Obfuscator v13.6.6
 getgenv().Number1 = 3;
 getgenv().Number2 = 4; 
