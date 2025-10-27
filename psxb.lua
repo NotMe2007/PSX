@@ -247,15 +247,56 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 	end
 	
 	LocalPlayer.PlayerScripts:WaitForChild("Scripts", 10):WaitForChild("Game", 10):WaitForChild("Coins", 10)
-	LocalPlayer.PlayerScripts:WaitForChild("Scripts", 10):WaitForChild("Game", 10):WaitForChild("Pets", 10)
-	wait()
-	-- local orbsScript = getsenv(game.Players.LocalPlayer.PlayerScripts.Scripts.Game:WaitForChild("Orbs", 10))
-	-- local CollectOrb = orbsScript.Collect
+	local function WaitForScripts()
+		local Scripts = LocalPlayer.PlayerScripts:WaitForChild("Scripts", 10)
+		if not Scripts then return false end
+		
+		local Game = Scripts:WaitForChild("Game", 10)
+		if not Game then return false end
+		
+		local Pets = Game:WaitForChild("Pets", 10)
+		local Coins = Game:WaitForChild("Coins", 10)
+		
+		if not Pets or not Coins then return false end
+		return true
+	end
 	
-	local GetRemoteFunction = debug.getupvalue(Library.Network.Invoke, 2)
-		-- OrbList = debug.getupvalue(orbsScript.Collect, 1)
-	local CoinsTable = debug.getupvalue(getsenv(LocalPlayer.PlayerScripts.Scripts.Game:WaitForChild("Coins", 10)).DestroyAllCoins, 1)
-	local RenderedPets = debug.getupvalue(getsenv(LocalPlayer.PlayerScripts.Scripts.Game:WaitForChild("Pets", 10)).NetworkUpdate, 1)
+	if not WaitForScripts() then
+		LocalPlayer:Kick("Failed to load required game scripts!")
+		return
+	end
+	
+	local success, result = pcall(function()
+		local GetRemoteFunction = debug.getupvalue(Library.Network.Invoke, 2)
+		local coinsScript = getsenv(LocalPlayer.PlayerScripts.Scripts.Game.Coins)
+		local petsScript = getsenv(LocalPlayer.PlayerScripts.Scripts.Game.Pets)
+		
+		if not coinsScript or not petsScript then 
+			error("Failed to get required game scripts")
+		end
+		
+		local CoinsTable = debug.getupvalue(coinsScript.DestroyAllCoins, 1)
+		local RenderedPets = debug.getupvalue(petsScript.NetworkUpdate, 1)
+		
+		if not CoinsTable or not RenderedPets then
+			error("Failed to get required game tables")
+		end
+		
+		return {
+			GetRemoteFunction = GetRemoteFunction,
+			CoinsTable = CoinsTable,
+			RenderedPets = RenderedPets
+		}
+	end)
+	
+	if not success then
+		LocalPlayer:Kick("Failed to initialize required game functions: " .. tostring(result))
+		return
+	end
+	
+	local GetRemoteFunction = result.GetRemoteFunction
+	local CoinsTable = result.CoinsTable
+	local RenderedPets = result.RenderedPets
 	
 	
 	local IsHardcore = Library.Shared.IsHardcore
@@ -2618,4 +2659,3 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 		end
 	end)
 end
-
