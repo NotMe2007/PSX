@@ -153,6 +153,29 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 	Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 	Humanoid = Character:WaitForChild("Humanoid")
 	HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+
+	-- Safe map getter: retries a few times and validates common children to avoid
+	-- repeatedly triggering engine WaitForChild warnings from game internals.
+	local function GetMapSafe(timeout)
+		timeout = timeout or 5
+		local elapsed = 0
+		while elapsed < timeout do
+			local ok, map = pcall(function()
+				if Library and Library.WorldCmds and Library.WorldCmds.GetMap then
+					return Library.WorldCmds.GetMap()
+				end
+			end)
+			if ok and map then
+				-- quick sanity checks: map usually contains Interactive/Teleports/Gates
+				if map:FindFirstChild("Interactive") or map:FindFirstChild("Teleports") or map:FindFirstChild("Gates") then
+					return map
+				end
+			end
+			elapsed = elapsed + 0.5
+			task.wait(0.5)
+		end
+		return nil
+	end
 	
 	
 	local bypassSuccess, bypassError = pcall(function()
@@ -1729,8 +1752,14 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 					wait(1)
 				end
 
-				HumanoidRootPart.CFrame = Library.WorldCmds.GetMap().Interactive.Bank.Pad.CFrame + Vector3.new(0, 3, 0) 
-				HumanoidRootPart.CFrame = HumanoidRootPart.CFrame + (HumanoidRootPart.CFrame.LookVector * 15)
+				local mapForBank = GetMapSafe()
+				if mapForBank and mapForBank:FindFirstChild("Interactive") and mapForBank.Interactive:FindFirstChild("Bank") and mapForBank.Interactive.Bank:FindFirstChild("Pad") then
+					HumanoidRootPart.CFrame = mapForBank.Interactive.Bank.Pad.CFrame + Vector3.new(0, 3, 0)
+					HumanoidRootPart.CFrame = HumanoidRootPart.CFrame + (HumanoidRootPart.CFrame.LookVector * 15)
+				else
+					BankError("Bank pad not found on map")
+					return
+				end
 				
 				wait(0.5)
 				
@@ -2470,7 +2499,7 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 						local currentProgress, currentMission = unpack(IsHardcore and saveData.Hardcore.HackerPortalProgress or saveData.HackerPortalProgress)
 						if currentMission < 0 then
 							-- Start quest
-							local map = Library.WorldCmds.GetMap()
+							local map = GetMapSafe()
 							local interactive = nil
 							if map then interactive = map:FindFirstChild("Interactive") end
 							
@@ -2497,7 +2526,7 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 						if currentMission > -1 then
 							local totalToComplete = Library.Shared.HackerPortalQuests[currentMission]
 							if totalToComplete and tonumber(totalToComplete) and currentProgress >= totalToComplete then
-								local map = Library.WorldCmds.GetMap()
+								local map = GetMapSafe()
 								local interactive = nil
 								if map then interactive = map:FindFirstChild("Interactive") end
 								
@@ -2540,7 +2569,7 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 						wait(1)
 					end
 					
-					local map = Library.WorldCmds.GetMap()
+					local map = GetMapSafe()
 					local allGates = nil
 					if map then allGates = map:FindFirstChild("Gates") end
 					
@@ -2577,7 +2606,8 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 								wait(1)
 							end
 							-- TELEPORT TO THE NEW AREA
-							local areaTeleport = Library.WorldCmds.GetMap().Teleports:FindFirstChild(nextAreaName);
+							local _map = GetMapSafe()
+							local areaTeleport = _map and _map:FindFirstChild("Teleports") and _map.Teleports:FindFirstChild(nextAreaName) or nil
 							if areaTeleport then 
 								Library.Signal.Fire("Teleporting")
 								task.wait(0.25)
