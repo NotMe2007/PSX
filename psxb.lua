@@ -1,16 +1,19 @@
 --[[
--- Pet Simulator X GUI
+-- THIS SCRIPT HAS BEEN CODED BY RAFA (discord.gg/MilkUp)
+-- DON'T BE A STUPID SKIDDIE THAT STEALS PEOPLE'S CODE AND PUTS ON A SHIT PAID (or "watch ad to get key") SCRIPT
+-- hi Project WD, please don't steal my code again, thx
 
 -- For Preston:
--- Sorry for any inconvenience. I don't make any malicious scripts like mail/bank stealers, trade scam, and this shit, just auto-farm and QoL scripts, feel free to use this repo to fix any vulnerability on your game
+-- Sorry for any inconvenience. I don't make any malicious scripts like mail/bank stealers, trade scam, and this shit, just auto-farm and QoL scripts, feel free to use this repo to find a vulnerability in your game
 --]]
 
+-- Join us at 
+-- discord.gg/MilkUp
 
 
 
 
 --[[
-loadstring(game:HttpGet("https://raw.githubusercontent.com/NotMe2007/PSX/refs/heads/main/psxb.lua"))()
 -- TODO LIST:
 -- • Huge notifier on Discord Webhook (it's ez but I'm lazy)
 -- • Auto quest
@@ -20,62 +23,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/NotMe2007/PSX/refs/he
 
 -- Important Variables
 local SCRIPT_NAME = "Rafa PSX GUI"
-local SCRIPT_VERSION = "v0.3" -- Hey Rafa, remember to change it before updating lmao
-
--- Version Control & Auto-Disable System
-if _G.PSX_LOADED and _G.PSX_VERSION then
-    -- Disable all features from the old version
-    if _G.PSX_DISABLE_FUNC then
-        _G.PSX_DISABLE_FUNC()
-	end
-    
-    -- Clean up old version
-    task.wait(1)
-    _G.PSX_LOADED = false
-    _G.PSX_VERSION = nil
-	if _G.PSX_RAYFIELD and type(_G.PSX_RAYFIELD.Destroy) == "function" then
-		pcall(function() _G.PSX_RAYFIELD:Destroy() end)
-	end
-end
-
--- Store current version info
-_G.PSX_VERSION = SCRIPT_VERSION
-_G.PSX_LOADED = true
-
--- Create a disable function for this version
-_G.PSX_DISABLE_FUNC = function()
-    pcall(function()
-        -- Disable all toggles
-        enableAutoFarm = false
-        EnableAutoHatch = false
-        Easter_AutoEggHunt = false
-        enableAutoDaycare = false
-        Automations_AutoGameComplete = false
-        BankIndex_InProgress = false
-        
-        -- Clear intervals/loops
-        ScriptIsCurrentlyBusy = true
-        BankIndex_Debounce = true
-        
-        -- Restore modified functions if they exist
-		if Original_OpenEgg and OpenEggsScript and type(Original_OpenEgg) == "function" then
-			pcall(function() OpenEggsScript.OpenEgg = Original_OpenEgg end)
-		end
-
-		if Original_HasPower and Library and Library.Shared then
-			pcall(function() Library.Shared.HasPower = Original_HasPower end)
-		end
-
-		if Original_GetPowerDir and Library and Library.Shared then
-			pcall(function() Library.Shared.GetPowerDir = Original_GetPowerDir end)
-		end
-        
-        -- Notify user
-        if Library and Library.ChatMsg then
-            Library.ChatMsg.New("Script version " .. SCRIPT_VERSION .. " has been disabled due to new version.", Color3.fromRGB(255, 50, 50))
-        end
-    end)
-end
+local SCRIPT_VERSION = "v0.4" -- Hey Rafa, remember to change it before updating lmao
 
 -- Detect if the script has executed by AutoExec
 local AutoExecuted = false
@@ -153,29 +101,6 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 	Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 	Humanoid = Character:WaitForChild("Humanoid")
 	HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
-
-	-- Safe map getter: retries a few times and validates common children to avoid
-	-- repeatedly triggering engine WaitForChild warnings from game internals.
-	local function GetMapSafe(timeout)
-		timeout = timeout or 5
-		local elapsed = 0
-		while elapsed < timeout do
-			local ok, map = pcall(function()
-				if Library and Library.WorldCmds and Library.WorldCmds.GetMap then
-					return Library.WorldCmds.GetMap()
-				end
-			end)
-			if ok and map then
-				-- quick sanity checks: map usually contains Interactive/Teleports/Gates
-				if map:FindFirstChild("Interactive") or map:FindFirstChild("Teleports") or map:FindFirstChild("Gates") then
-					return map
-				end
-			end
-			elapsed = elapsed + 0.5
-			task.wait(0.5)
-		end
-		return nil
-	end
 	
 	
 	local bypassSuccess, bypassError = pcall(function()
@@ -188,7 +113,7 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 		end
 		
 		hookfunction(debug.getupvalue(Library.Network.Invoke, 1), function(...) return true end)
-		-- Currently we don't need to hook Fire, since both Invoke/Fire have the same upvalue, this may change in future.
+		-- Currently, we don't need to hook Fire, since both Invoke/Fire have the same upvalue; this may change in the future.
 		-- hookfunction(debug.getupvalue(Library.Network.Fire, 1), function(...) return true end)
 		
 		local originalPlay = Library.Audio.Play
@@ -270,88 +195,15 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 	end
 	
 	LocalPlayer.PlayerScripts:WaitForChild("Scripts", 10):WaitForChild("Game", 10):WaitForChild("Coins", 10)
-	local function WaitForScripts()
-		local Scripts = LocalPlayer.PlayerScripts:WaitForChild("Scripts", 10)
-		if not Scripts then return false end
-		
-		local Game = Scripts:WaitForChild("Game", 10)
-		if not Game then return false end
-		
-		local Pets = Game:WaitForChild("Pets", 10)
-		local Coins = Game:WaitForChild("Coins", 10)
-		
-		if not Pets or not Coins then return false end
-		return true
-	end
+	LocalPlayer.PlayerScripts:WaitForChild("Scripts", 10):WaitForChild("Game", 10):WaitForChild("Pets", 10)
+	wait()
+	-- local orbsScript = getsenv(game.Players.LocalPlayer.PlayerScripts.Scripts.Game:WaitForChild("Orbs", 10))
+	-- local CollectOrb = orbsScript.Collect
 	
-	if not WaitForScripts() then
-		LocalPlayer:Kick("Failed to load required game scripts!")
-		return
-	end
-	
-	local success, result = pcall(function()
-		-- Safely obtain required functions/tables with retries to avoid "invalid argument #1" errors
-		local GetRemoteFunction = nil
-		local coinsScript = nil
-		local petsScript = nil
-	
-		-- Try to retrieve the Network Invoke upvalue if available
-		if Library and Library.Network and Library.Network.Invoke then
-			pcall(function()
-				GetRemoteFunction = debug.getupvalue(Library.Network.Invoke, 2)
-			end)
-	
-		-- Retrieve script environments with retries
-		local attempts = 0
-		repeat
-			coinsScript = pcall(function() return getsenv(LocalPlayer.PlayerScripts.Scripts.Game.Coins) end) and getsenv(LocalPlayer.PlayerScripts.Scripts.Game.Coins) or nil
-			if coinsScript and type(coinsScript.DestroyAllCoins) == "function" then break end
-			attempts = attempts + 1
-			task.wait(0.5)
-		until attempts >= 6
-		if not coinsScript or type(coinsScript.DestroyAllCoins) ~= "function" then
-			error("Coins script or DestroyAllCoins not available")
-		end
-	
-		attempts = 0
-		repeat
-			petsScript = pcall(function() return getsenv(LocalPlayer.PlayerScripts.Scripts.Game.Pets) end) and getsenv(LocalPlayer.PlayerScripts.Scripts.Game.Pets) or nil
-			if petsScript and type(petsScript.NetworkUpdate) == "function" then break end
-			attempts = attempts + 1
-			task.wait(0.5)
-		until attempts >= 6
-		if not petsScript or type(petsScript.NetworkUpdate) ~= "function" then
-			error("Pets script or NetworkUpdate not available")
-		end
-	
-		-- Now it's safe to call debug.getupvalue (first arg is confirmed to be a function)
-		local CoinsTable = nil
-		local RenderedPets = nil
-		pcall(function() CoinsTable = debug.getupvalue(coinsScript.DestroyAllCoins, 1) end)
-		pcall(function() RenderedPets = debug.getupvalue(petsScript.NetworkUpdate, 1) end)
-	
-		if not CoinsTable or type(CoinsTable) ~= "table" then
-			error("Failed to get required CoinsTable")
-		end
-		if not RenderedPets or type(RenderedPets) ~= "table" then
-			error("Failed to get required RenderedPets")
-		end
-	
-		return {
-			GetRemoteFunction = GetRemoteFunction,
-			CoinsTable = CoinsTable,
-			RenderedPets = RenderedPets
-		}
-	end)
-	
-	if not success then
-		LocalPlayer:Kick("Failed to initialize required game functions: " .. tostring(result))
-		return
-	end
-	
-	local GetRemoteFunction = result.GetRemoteFunction
-	local CoinsTable = result.CoinsTable
-	local RenderedPets = result.RenderedPets
+	local GetRemoteFunction = debug.getupvalue(Library.Network.Invoke, 2)
+		-- OrbList = debug.getupvalue(orbsScript.Collect, 1)
+	local CoinsTable = debug.getupvalue(getsenv(LocalPlayer.PlayerScripts.Scripts.Game:WaitForChild("Coins", 10)).DestroyAllCoins, 1)
+	local RenderedPets = debug.getupvalue(getsenv(LocalPlayer.PlayerScripts.Scripts.Game:WaitForChild("Pets", 10)).NetworkUpdate, 1)
 	
 	
 	local IsHardcore = Library.Shared.IsHardcore
@@ -401,7 +253,7 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 		-- for name, area in pairs(Library.Directory.Areas) do
 			-- local containsSpawn = false
 			-- for spawnName, spawn in pairs(world.spawns) do 
-				-- if spawn.settings and spawn.settings.area and spawn.settings.area == name then 
+				-- if spawn. settings and spawn.settings.area and spawn.settings.area == name then 
 					-- containsSpawn = true 
 					-- break 
 				-- end
@@ -485,9 +337,9 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 
 		
 		for i, v in ipairs(AllGameAreas) do 
-			if cArea == "" and v and Library.WorldCmds.HasArea(v) then
+			if cArea == "" and Library.WorldCmds.HasArea(v) then
 				local nxtArea = AllGameAreas[i + 1]
-				if nxtArea and not (Library.WorldCmds.HasArea(nxtArea)) then 
+				if nxtArea and not Library.WorldCmds.HasArea(nxtArea) then 
 					cArea = v
 					nArea = nxtArea
 					break
@@ -1198,51 +1050,21 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 
 	coroutine.wrap(function()
 		while true do 
-			local success, err = pcall(function()
 				if enableAutoFarm and not ScriptIsCurrentlyBusy then 
-					local coinsScript = getsenv(LocalPlayer.PlayerScripts.Scripts.Game.Coins)
-					local petsScript = getsenv(LocalPlayer.PlayerScripts.Scripts.Game.Pets)
-					
-					if not coinsScript or not petsScript then 
-						wait(1)
-						return
-					end
-					
-					CoinsTable = debug.getupvalue(coinsScript.DestroyAllCoins, 1)
-					RenderedPets = debug.getupvalue(petsScript.NetworkUpdate, 1)
-					
-					if not CoinsTable or not RenderedPets then
-						wait(1)
-						return
-					end
+					CoinsTable = debug.getupvalue(getsenv(LocalPlayer.PlayerScripts.Scripts.Game.Coins).DestroyAllCoins, 1)
+					RenderedPets = debug.getupvalue(getsenv(LocalPlayer.PlayerScripts.Scripts.Game.Pets).NetworkUpdate, 1)
 					
 					if AutoFarm_FastMode then 
 
-						if not CoinsTable then return end
 						local foundCoins = SortCoinsByPriorityFastMode(CoinsTable)
 						local equippedPets = Library.PetCmds.GetEquipped()
-						if equippedPets and #equippedPets > 0 and foundCoins and #foundCoins > 0 then
+						if equippedPets and #equippedPets > 0 and #foundCoins > 0 then
 							for _, pet in pairs(equippedPets) do
-								if pet and pet.uid then
-									local selectedCoin = foundCoins[1]
-									if selectedCoin and selectedCoin.coinId then
-										task.spawn(function()
-											pcall(function()
-												Library.Network.Invoke("Join Coin", selectedCoin.coinId, {pet.uid}) 
-												Library.Network.Fire("Farm Coin", selectedCoin.coinId, pet.uid)
-											end)
-										end)
-										
-										table.remove(foundCoins, 1)
-										task.wait(AutoFarm_FarmSpeed)
-									end
-								end
-								
+								local selectedCoin = foundCoins[1]
 								task.spawn(function()
-									pcall(function()
-										Library.Network.Invoke("Join Coin", selectedCoin.coinId, {pet.uid}) 
-										Library.Network.Fire("Farm Coin", selectedCoin.coinId, pet.uid)
-									end)
+									Library.Network.Invoke("Join Coin", selectedCoin.coinId, {pet.uid}) 
+									Library.Network.Fire("Farm Coin", selectedCoin.coinId, pet.uid)
+									
 								end)
 								
 								table.remove(foundCoins, 1)
@@ -1295,7 +1117,6 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 						end
 					end
 				end
-			end)
 			wait(0.1)
 		end	
 	end)()
@@ -1582,7 +1403,7 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 			local eggsOpened = Library.Functions.Commas(playerEggsOpened and playerEggsOpened[LastOpenEggId] and playerEggsOpened[LastOpenEggId] or 0)
 			local eggsRemaining = Library.Functions.Commas(Library.Directory.Eggs[selectedEgg] and math.floor(playerData[Library.Directory.Eggs[selectedEgg].currency] / Library.Directory.Eggs[selectedEgg].cost) > 0 and math.floor(playerData[Library.Directory.Eggs[selectedEgg].currency] / Library.Directory.Eggs[selectedEgg].cost) or 0)
 			local insaneLucky = serverBoosts and serverBoosts["Insane Luck"] and tostring(serverBoosts["Insane Luck"].totalTimeLeft) .. "s" or "Inactive" 
-			eggInfo:Set({Title = "Information", Content = string.format("Buy some egg in-game and it will be automatically selected!\n\n<b>Selected Egg:</b> %s\n<b>Mode:</b> %s\n<b>Quantity Hatched:</b> %s\n<b>Coins:</b> %s\n<b>25x Insane Luck:</b> %s", selectedEgg, selectedSetting, eggsOpened, eggsRemaining, insaneLucky)})
+			eggInfo:Set({Title = "Information", Content = string.format("Buy some egg in-game and it will be automatically selected!\n\n<b>Selected Egg:</b> %s\n<b>Mode:</b> %s\n<b>Quantity Hatched:</b> %s\n<b>Quantity Remaining:</b> %s\n<b>25x Insane Luck:</b> %s", selectedEgg, selectedSetting, eggsOpened, eggsRemaining, insaneLucky)})
 		end
 	end	
 	
@@ -1624,16 +1445,12 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 				if nextAreaName ~= "COMPLETED" then 
 					local areaToTeleport = Library.Directory.Areas[currentAreaName]
 					if areaToTeleport and areaToTeleport.world then
-						local currentWorld = Library.WorldCmds.Get()
-						if currentWorld and currentWorld ~= areaToTeleport.world then 
-							local success = Library.WorldCmds.Load(areaToTeleport.world)
-							if not success then return end
+						if Library.WorldCmds.Get() ~= areaToTeleport.world then 
+							Library.WorldCmds.Load(areaToTeleport.world)
 						end
 						wait(0.25)
 			
-						local worldMap = Library.WorldCmds.GetMap()
-						if not worldMap then return end
-						local areaTeleport = worldMap.Teleports:FindFirstChild(currentAreaName)
+						local areaTeleport = Library.WorldCmds.GetMap().Teleports:FindFirstChild(currentAreaName)
 						if areaTeleport then 
 							Library.Signal.Fire("Teleporting")
 							task.wait(0.25)
@@ -1752,14 +1569,8 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 					wait(1)
 				end
 
-				local mapForBank = GetMapSafe()
-				if mapForBank and mapForBank:FindFirstChild("Interactive") and mapForBank.Interactive:FindFirstChild("Bank") and mapForBank.Interactive.Bank:FindFirstChild("Pad") then
-					HumanoidRootPart.CFrame = mapForBank.Interactive.Bank.Pad.CFrame + Vector3.new(0, 3, 0)
-					HumanoidRootPart.CFrame = HumanoidRootPart.CFrame + (HumanoidRootPart.CFrame.LookVector * 15)
-				else
-					BankError("Bank pad not found on map")
-					return
-				end
+				HumanoidRootPart.CFrame = Library.WorldCmds.GetMap().Interactive.Bank.Pad.CFrame + Vector3.new(0, 3, 0) 
+				HumanoidRootPart.CFrame = HumanoidRootPart.CFrame + (HumanoidRootPart.CFrame.LookVector * 15)
 				
 				wait(0.5)
 				
@@ -2499,7 +2310,7 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 						local currentProgress, currentMission = unpack(IsHardcore and saveData.Hardcore.HackerPortalProgress or saveData.HackerPortalProgress)
 						if currentMission < 0 then
 							-- Start quest
-							local map = GetMapSafe()
+							local map = Library.WorldCmds.GetMap()
 							local interactive = nil
 							if map then interactive = map:FindFirstChild("Interactive") end
 							
@@ -2526,7 +2337,7 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 						if currentMission > -1 then
 							local totalToComplete = Library.Shared.HackerPortalQuests[currentMission]
 							if totalToComplete and tonumber(totalToComplete) and currentProgress >= totalToComplete then
-								local map = GetMapSafe()
+								local map = Library.WorldCmds.GetMap()
 								local interactive = nil
 								if map then interactive = map:FindFirstChild("Interactive") end
 								
@@ -2569,7 +2380,7 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 						wait(1)
 					end
 					
-					local map = GetMapSafe()
+					local map = Library.WorldCmds.GetMap()
 					local allGates = nil
 					if map then allGates = map:FindFirstChild("Gates") end
 					
@@ -2606,8 +2417,7 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 								wait(1)
 							end
 							-- TELEPORT TO THE NEW AREA
-							local _map = GetMapSafe()
-							local areaTeleport = _map and _map:FindFirstChild("Teleports") and _map.Teleports:FindFirstChild(nextAreaName) or nil
+							local areaTeleport = Library.WorldCmds.GetMap().Teleports:FindFirstChild(nextAreaName);
 							if areaTeleport then 
 								Library.Signal.Fire("Teleporting")
 								task.wait(0.25)
