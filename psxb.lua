@@ -1,19 +1,16 @@
 --[[
--- THIS SCRIPT HAS BEEN CODED BY RAFA (discord.gg/MilkUp)
--- DON'T BE A STUPID SKIDDIE THAT STEALS PEOPLE'S CODE AND PUTS ON A SHIT PAID (or "watch ad to get key") SCRIPT
--- hi Project WD, please don't steal my code again, thx
+-- Pet Simulator X GUI
 
 -- For Preston:
--- Sorry for any inconvenience. I don't make any malicious scripts like mail/bank stealers, trade scam, and this shit, just auto-farm and QoL scripts, feel free to use this repo to find a vulnerability in your game
+-- Sorry for any inconvenience. I don't make any malicious scripts like mail/bank stealers, trade scam, and this shit, just auto-farm and QoL scripts, feel free to use this repo to fix any vulnerability on your game
 --]]
 
--- Join us at 
--- discord.gg/MilkUp
 
 
 
 
 --[[
+loadstring(game:HttpGet("https://raw.githubusercontent.com/NotMe2007/PSX/refs/heads/main/psxb.lua"))()
 -- TODO LIST:
 -- • Huge notifier on Discord Webhook (it's ez but I'm lazy)
 -- • Auto quest
@@ -23,7 +20,62 @@
 
 -- Important Variables
 local SCRIPT_NAME = "Rafa PSX GUI"
-local SCRIPT_VERSION = "v0.4" -- Hey Rafa, remember to change it before updating lmao
+local SCRIPT_VERSION = "v0.3" -- Hey Rafa, remember to change it before updating lmao
+
+-- Version Control & Auto-Disable System
+if _G.PSX_LOADED and _G.PSX_VERSION then
+    -- Disable all features from the old version
+    if _G.PSX_DISABLE_FUNC then
+        _G.PSX_DISABLE_FUNC()
+	end
+    
+    -- Clean up old version
+    task.wait(1)
+    _G.PSX_LOADED = false
+    _G.PSX_VERSION = nil
+	if _G.PSX_RAYFIELD and type(_G.PSX_RAYFIELD.Destroy) == "function" then
+		pcall(function() _G.PSX_RAYFIELD:Destroy() end)
+	end
+end
+
+-- Store current version info
+_G.PSX_VERSION = SCRIPT_VERSION
+_G.PSX_LOADED = true
+
+-- Create a disable function for this version
+_G.PSX_DISABLE_FUNC = function()
+    pcall(function()
+        -- Disable all toggles
+        enableAutoFarm = false
+        EnableAutoHatch = false
+        Easter_AutoEggHunt = false
+        enableAutoDaycare = false
+        Automations_AutoGameComplete = false
+        BankIndex_InProgress = false
+        
+        -- Clear intervals/loops
+        ScriptIsCurrentlyBusy = true
+        BankIndex_Debounce = true
+        
+        -- Restore modified functions if they exist
+		if Original_OpenEgg and OpenEggsScript and type(Original_OpenEgg) == "function" then
+			pcall(function() OpenEggsScript.OpenEgg = Original_OpenEgg end)
+		end
+
+		if Original_HasPower and Library and Library.Shared then
+			pcall(function() Library.Shared.HasPower = Original_HasPower end)
+		end
+
+		if Original_GetPowerDir and Library and Library.Shared then
+			pcall(function() Library.Shared.GetPowerDir = Original_GetPowerDir end)
+		end
+        
+        -- Notify user
+        if Library and Library.ChatMsg then
+            Library.ChatMsg.New("Script version " .. SCRIPT_VERSION .. " has been disabled due to new version.", Color3.fromRGB(255, 50, 50))
+        end
+    end)
+end
 
 -- Detect if the script has executed by AutoExec
 local AutoExecuted = false
@@ -63,147 +115,238 @@ LocalPlayer.CharacterAdded:Connect(function(char)
 end)
 
 if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 7722306047 or game.PlaceId == 12610002282 then
-	
+	-- Bypass anti-cheat
 	local banSuccess, banError = pcall(function() 
-		local Blunder = require(game:GetService("ReplicatedStorage"):WaitForChild("X", 10):WaitForChild("Blunder", 10):WaitForChild("BlunderList", 10))
-		if not Blunder or not Blunder.getAndClear then LocalPlayer:Kick("Error while bypassing the anti-cheat! (Didn't find blunder)") end
-		
-		local OldGet = Blunder.getAndClear
-		setreadonly(Blunder, false)
-		local function OutputData(Message)
-		   print("-- PET SIM X BLUNDER --")
-		   print(Message .. "\n")
-		end
-		
-		Blunder.getAndClear = function(...)
-		   local Packet = ...
-			for i,v in next, Packet.list do
-			   if v.message ~= "PING" then
-				   OutputData(v.message)
-				   table.remove(Packet.list, i)
-			   end
-		   end
-		   return OldGet(Packet)
-		end
-		
-		setreadonly(Blunder, true)
-	end)
+    local RS = game:GetService("ReplicatedStorage")
+    local X = RS:WaitForChild("X", 10)
+    local BlunderModule = X:WaitForChild("Blunder", 10)
+    local Blunder = require(BlunderModule:WaitForChild("BlunderList", 10))
+    
+    if not Blunder or not Blunder.getAndClear then 
+        LocalPlayer:Kick("Error while bypassing the anti-cheat! (Didn't find blunder)")
+        return
+    end
+    
+    setreadonly(Blunder, false)
+    
+    local OldGet = Blunder.getAndClear
+    local SuppressKnownErrors = true  -- Toggle to false if you want all prints
+    
+    local function OutputData(Message)
+        if SuppressKnownErrors and (Message:find("coinId") or Message:find("invalid argument")) then
+            return  -- Skip printing known benign blunders
+        end
+        print("-- PET SIM X BLUNDER --")
+        print(Message .. "\n")
+    end
+    
+    Blunder.getAndClear = function(Packet)
+        for i = #Packet.list, 1, -1 do  -- Reverse loop to prevent skipping due to index shifts
+            local v = Packet.list[i]
+            if v.message ~= "PING" then
+                OutputData(v.message)
+                table.remove(Packet.list, i)
+            end
+        end
+        return OldGet(Packet)
+    end
+    
+    -- Proactive clear: Periodically reset the list to empty (except potential PING)
+    task.spawn(function()
+        while true do
+            task.wait(5)  -- Adjust interval as needed; too frequent might raise suspicion
+            if Blunder.list then
+                Blunder.list = {}  -- Assuming list is exposed; if not, this won't error
+            end
+        end
+    end)
+    
+    setreadonly(Blunder, true)
+end)
 
-	if not banSuccess then
-		LocalPlayer:Kick("Error while bypassing the anti-cheat! (".. banError ..")")
-		return
-	end
-	
-	local Library = require(game:GetService("ReplicatedStorage").Library)
-	assert(Library, "Oopps! Library has not been loaded. Maybe try re-joining?") 
-	while not Library.Loaded do task.wait() end
-	
-	Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-	Humanoid = Character:WaitForChild("Humanoid")
-	HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
-	
-	
-	local bypassSuccess, bypassError = pcall(function()
-		if not Library.Network then 
-			LocalPlayer:Kick("Network not found, can't bypass!")
-		end
-		
-		if not Library.Network.Invoke or not Library.Network.Fire then
-			LocalPlayer:Kick("Network Invoke/Fire was not found! Failed to bypass!")
-		end
-		
-		hookfunction(debug.getupvalue(Library.Network.Invoke, 1), function(...) return true end)
-		-- Currently, we don't need to hook Fire, since both Invoke/Fire have the same upvalue; this may change in the future.
-		-- hookfunction(debug.getupvalue(Library.Network.Fire, 1), function(...) return true end)
-		
-		local originalPlay = Library.Audio.Play
-		Library.Audio.Play = function(...) 
-			if checkcaller() then
-				local audioId, parent, pitch, volume, maxDistance, group, looped, timePosition = unpack({ ... })
-				if type(audioId) == "table" then
-					audioId = audioId[Random.new():NextInteger(1, #audioId)]
-				end
-				if not parent then
-					warn("Parent cannot be nil", debug.traceback())
-					return nil
-				end
-				if audioId == 0 then return nil end
-				
-				if type(audioId) == "number" or not string.find(audioId, "rbxassetid://", 1, true) then
-					audioId = "rbxassetid://" .. audioId
-				end
-				if pitch and type(pitch) == "table" then
-					pitch = Random.new():NextNumber(unpack(pitch))
-				end
-				if volume and type(volume) == "table" then
-					volume = Random.new():NextNumber(unpack(volume))
-				end
-				if group then
-					local soundGroup = game.SoundService:FindFirstChild(group) or nil
-				else
-					soundGroup = nil
-				end
-				if timePosition == nil then
-					timePosition = 0
-				else
-					timePosition = timePosition
-				end
-				local isGargabe = false
-				if not pcall(function() local _ = parent.Parent end) then
-					local newParent = parent
-					pcall(function()
-						newParent = CFrame.new(newParent)
-					end)
-					parent = Instance.new("Part")
-					parent.Anchored = true
-					parent.CanCollide = false
-					parent.CFrame = newParent
-					parent.Size = Vector3.new()
-					parent.Transparency = 1
-					parent.Parent = workspace:WaitForChild("__DEBRIS")
-					isGargabe = true
-				end
-				local sound = Instance.new("Sound")
-				sound.SoundId = audioId
-				sound.Name = "sound-" .. audioId
-				sound.Pitch = pitch and 1
-				sound.Volume = volume and 0.5
-				sound.SoundGroup = soundGroup
-				sound.Looped = looped and false
-				sound.MaxDistance = maxDistance and 100
-				sound.TimePosition = timePosition
-				sound.RollOffMode = Enum.RollOffMode.Linear
-				sound.Parent = parent
-				if not require(game:GetService("ReplicatedStorage"):WaitForChild("Library"):WaitForChild("Client")).Settings.SoundsEnabled then
-					sound:SetAttribute("CachedVolume", sound.Volume)
-					sound.Volume = 0
-				end
-				sound:Play()
-				getfenv(originalPlay).AddToGarbageCollection(sound, isGargabe)
-				return sound
-			end
-			
-			return originalPlay(...)
-		end
-	
-	end)
-	
-	if not bypassSuccess then
-		print(bypassError)
-		LocalPlayer:Kick("Error while bypassing network, try again or wait for an update!")
-		return
-	end
+if not banSuccess then
+    LocalPlayer:Kick("Error while bypassing the anti-cheat! (".. (banError or "Unknown error") ..")")
+    return
+end
+
+local bypassSuccess, bypassError = pcall(function()
+    if not Library.Network then 
+        LocalPlayer:Kick("Network not found, can't bypass!")
+    end
+    
+    if not Library.Network.Invoke or not Library.Network.Fire then
+        LocalPlayer:Kick("Network Invoke/Fire was not found! Failed to bypass!")
+    end
+    
+    -- Improved: Explicitly hook both Invoke and Fire for future-proofing
+    local networkCheck = debug.getupvalue(Library.Network.Invoke, 1)
+    hookfunction(networkCheck, function(...) return true end)
+    
+    local fireCheck = debug.getupvalue(Library.Network.Fire, 1)
+    hookfunction(fireCheck, function(...) return true end)
+    
+    local originalPlay = Library.Audio.Play
+    Library.Audio.Play = function(...) 
+        if checkcaller() then
+            local audioId, parent, pitch, volume, maxDistance, group, looped, timePosition = unpack({ ... })
+            if type(audioId) == "table" then
+                audioId = audioId[Random.new():NextInteger(1, #audioId)]
+            end
+            if not parent then
+                warn("Parent cannot be nil", debug.traceback())
+                return nil
+            end
+            if audioId == 0 then return nil end
+            
+            if type(audioId) == "number" or not string.find(audioId, "rbxassetid://", 1, true) then
+                audioId = "rbxassetid://" .. audioId
+            end
+            if pitch and type(pitch) == "table" then
+                pitch = Random.new():NextNumber(unpack(pitch))
+            end
+            if volume and type(volume) == "table" then
+                volume = Random.new():NextNumber(unpack(volume))
+            end
+            if group then
+                local soundGroup = game.SoundService:FindFirstChild(group) or nil
+            else
+                soundGroup = nil
+            end
+            if timePosition == nil then
+                timePosition = 0
+            else
+                timePosition = timePosition
+            end
+            local isGargabe = false
+            if not pcall(function() local _ = parent.Parent end) then
+                local newParent = parent
+                pcall(function()
+                    newParent = CFrame.new(newParent)
+                end)
+                parent = Instance.new("Part")
+                parent.Anchored = true
+                parent.CanCollide = false
+                parent.CFrame = newParent
+                parent.Size = Vector3.new()
+                parent.Transparency = 1
+                parent.Parent = workspace:WaitForChild("__DEBRIS")
+                isGargabe = true
+            end
+            local sound = Instance.new("Sound")
+            sound.SoundId = audioId
+            sound.Name = "sound-" .. audioId
+            sound.Pitch = pitch and 1
+            sound.Volume = volume and 0.5
+            sound.SoundGroup = soundGroup
+            sound.Looped = looped and false
+            sound.MaxDistance = maxDistance and 100
+            sound.TimePosition = timePosition
+            sound.RollOffMode = Enum.RollOffMode.Linear
+            sound.Parent = parent
+            if not require(game:GetService("ReplicatedStorage"):WaitForChild("Library"):WaitForChild("Client")).Settings.SoundsEnabled then
+                sound:SetAttribute("CachedVolume", sound.Volume)
+                sound.Volume = 0
+            end
+            sound:Play()
+            getfenv(originalPlay).AddToGarbageCollection(sound, isGargabe)
+            return sound
+        end
+        
+        return originalPlay(...)
+    end
+
+end)
+
+if not bypassSuccess then
+    print(bypassError)
+    LocalPlayer:Kick("Error while bypassing network, try again or wait for an update!")
+    return
+end
+
 	
 	LocalPlayer.PlayerScripts:WaitForChild("Scripts", 10):WaitForChild("Game", 10):WaitForChild("Coins", 10)
-	LocalPlayer.PlayerScripts:WaitForChild("Scripts", 10):WaitForChild("Game", 10):WaitForChild("Pets", 10)
-	wait()
-	-- local orbsScript = getsenv(game.Players.LocalPlayer.PlayerScripts.Scripts.Game:WaitForChild("Orbs", 10))
-	-- local CollectOrb = orbsScript.Collect
+	local function WaitForScripts()
+		local Scripts = LocalPlayer.PlayerScripts:WaitForChild("Scripts", 10)
+		if not Scripts then return false end
+		
+		local Game = Scripts:WaitForChild("Game", 10)
+		if not Game then return false end
+		
+		local Pets = Game:WaitForChild("Pets", 10)
+		local Coins = Game:WaitForChild("Coins", 10)
+		
+		if not Pets or not Coins then return false end
+		return true
+	end
 	
-	local GetRemoteFunction = debug.getupvalue(Library.Network.Invoke, 2)
-		-- OrbList = debug.getupvalue(orbsScript.Collect, 1)
-	local CoinsTable = debug.getupvalue(getsenv(LocalPlayer.PlayerScripts.Scripts.Game:WaitForChild("Coins", 10)).DestroyAllCoins, 1)
-	local RenderedPets = debug.getupvalue(getsenv(LocalPlayer.PlayerScripts.Scripts.Game:WaitForChild("Pets", 10)).NetworkUpdate, 1)
+	if not WaitForScripts() then
+		LocalPlayer:Kick("Failed to load required game scripts!")
+		return
+	end
+	
+	local success, result = pcall(function()
+		-- Safely obtain required functions/tables with retries to avoid "invalid argument #1" errors
+		local GetRemoteFunction = nil
+		local coinsScript = nil
+		local petsScript = nil
+	
+		-- Try to retrieve the Network Invoke upvalue if available
+		if Library and Library.Network and Library.Network.Invoke then
+			pcall(function()
+				GetRemoteFunction = debug.getupvalue(Library.Network.Invoke, 2)
+			end)
+	
+		-- Retrieve script environments with retries
+		local attempts = 0
+		repeat
+			coinsScript = pcall(function() return getsenv(LocalPlayer.PlayerScripts.Scripts.Game.Coins) end) and getsenv(LocalPlayer.PlayerScripts.Scripts.Game.Coins) or nil
+			if coinsScript and type(coinsScript.DestroyAllCoins) == "function" then break end
+			attempts = attempts + 1
+			task.wait(0.5)
+		until attempts >= 6
+		if not coinsScript or type(coinsScript.DestroyAllCoins) ~= "function" then
+			error("Coins script or DestroyAllCoins not available")
+		end
+	
+		attempts = 0
+		repeat
+			petsScript = pcall(function() return getsenv(LocalPlayer.PlayerScripts.Scripts.Game.Pets) end) and getsenv(LocalPlayer.PlayerScripts.Scripts.Game.Pets) or nil
+			if petsScript and type(petsScript.NetworkUpdate) == "function" then break end
+			attempts = attempts + 1
+			task.wait(0.5)
+		until attempts >= 6
+		if not petsScript or type(petsScript.NetworkUpdate) ~= "function" then
+			error("Pets script or NetworkUpdate not available")
+		end
+	
+		-- Now it's safe to call debug.getupvalue (first arg is confirmed to be a function)
+		local CoinsTable = nil
+		local RenderedPets = nil
+		pcall(function() CoinsTable = debug.getupvalue(coinsScript.DestroyAllCoins, 1) end)
+		pcall(function() RenderedPets = debug.getupvalue(petsScript.NetworkUpdate, 1) end)
+	
+		if not CoinsTable or type(CoinsTable) ~= "table" then
+			error("Failed to get required CoinsTable")
+		end
+		if not RenderedPets or type(RenderedPets) ~= "table" then
+			error("Failed to get required RenderedPets")
+		end
+	
+		return {
+			GetRemoteFunction = GetRemoteFunction,
+			CoinsTable = CoinsTable,
+			RenderedPets = RenderedPets
+		}
+	end)
+	
+	if not success then
+		LocalPlayer:Kick("Failed to initialize required game functions: " .. tostring(result))
+		return
+	end
+	
+	local GetRemoteFunction = result.GetRemoteFunction
+	local CoinsTable = result.CoinsTable
+	local RenderedPets = result.RenderedPets
 	
 	
 	local IsHardcore = Library.Shared.IsHardcore
@@ -253,7 +396,7 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 		-- for name, area in pairs(Library.Directory.Areas) do
 			-- local containsSpawn = false
 			-- for spawnName, spawn in pairs(world.spawns) do 
-				-- if spawn. settings and spawn.settings.area and spawn.settings.area == name then 
+				-- if spawn.settings and spawn.settings.area and spawn.settings.area == name then 
 					-- containsSpawn = true 
 					-- break 
 				-- end
@@ -337,9 +480,9 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 
 		
 		for i, v in ipairs(AllGameAreas) do 
-			if cArea == "" and Library.WorldCmds.HasArea(v) then
+			if cArea == "" and v and Library.WorldCmds.HasArea(v) then
 				local nxtArea = AllGameAreas[i + 1]
-				if nxtArea and not Library.WorldCmds.HasArea(nxtArea) then 
+				if nxtArea and not (Library.WorldCmds.HasArea(nxtArea)) then 
 					cArea = v
 					nArea = nxtArea
 					break
@@ -1050,21 +1193,51 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 
 	coroutine.wrap(function()
 		while true do 
+			local success, err = pcall(function()
 				if enableAutoFarm and not ScriptIsCurrentlyBusy then 
-					CoinsTable = debug.getupvalue(getsenv(LocalPlayer.PlayerScripts.Scripts.Game.Coins).DestroyAllCoins, 1)
-					RenderedPets = debug.getupvalue(getsenv(LocalPlayer.PlayerScripts.Scripts.Game.Pets).NetworkUpdate, 1)
+					local coinsScript = getsenv(LocalPlayer.PlayerScripts.Scripts.Game.Coins)
+					local petsScript = getsenv(LocalPlayer.PlayerScripts.Scripts.Game.Pets)
+					
+					if not coinsScript or not petsScript then 
+						wait(1)
+						return
+					end
+					
+					CoinsTable = debug.getupvalue(coinsScript.DestroyAllCoins, 1)
+					RenderedPets = debug.getupvalue(petsScript.NetworkUpdate, 1)
+					
+					if not CoinsTable or not RenderedPets then
+						wait(1)
+						return
+					end
 					
 					if AutoFarm_FastMode then 
 
+						if not CoinsTable then return end
 						local foundCoins = SortCoinsByPriorityFastMode(CoinsTable)
 						local equippedPets = Library.PetCmds.GetEquipped()
-						if equippedPets and #equippedPets > 0 and #foundCoins > 0 then
+						if equippedPets and #equippedPets > 0 and foundCoins and #foundCoins > 0 then
 							for _, pet in pairs(equippedPets) do
-								local selectedCoin = foundCoins[1]
+								if pet and pet.uid then
+									local selectedCoin = foundCoins[1]
+									if selectedCoin and selectedCoin.coinId then
+										task.spawn(function()
+											pcall(function()
+												Library.Network.Invoke("Join Coin", selectedCoin.coinId, {pet.uid}) 
+												Library.Network.Fire("Farm Coin", selectedCoin.coinId, pet.uid)
+											end)
+										end)
+										
+										table.remove(foundCoins, 1)
+										task.wait(AutoFarm_FarmSpeed)
+									end
+								end
+								
 								task.spawn(function()
-									Library.Network.Invoke("Join Coin", selectedCoin.coinId, {pet.uid}) 
-									Library.Network.Fire("Farm Coin", selectedCoin.coinId, pet.uid)
-									
+									pcall(function()
+										Library.Network.Invoke("Join Coin", selectedCoin.coinId, {pet.uid}) 
+										Library.Network.Fire("Farm Coin", selectedCoin.coinId, pet.uid)
+									end)
 								end)
 								
 								table.remove(foundCoins, 1)
@@ -1117,6 +1290,7 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 						end
 					end
 				end
+			end)
 			wait(0.1)
 		end	
 	end)()
@@ -1403,7 +1577,7 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 			local eggsOpened = Library.Functions.Commas(playerEggsOpened and playerEggsOpened[LastOpenEggId] and playerEggsOpened[LastOpenEggId] or 0)
 			local eggsRemaining = Library.Functions.Commas(Library.Directory.Eggs[selectedEgg] and math.floor(playerData[Library.Directory.Eggs[selectedEgg].currency] / Library.Directory.Eggs[selectedEgg].cost) > 0 and math.floor(playerData[Library.Directory.Eggs[selectedEgg].currency] / Library.Directory.Eggs[selectedEgg].cost) or 0)
 			local insaneLucky = serverBoosts and serverBoosts["Insane Luck"] and tostring(serverBoosts["Insane Luck"].totalTimeLeft) .. "s" or "Inactive" 
-			eggInfo:Set({Title = "Information", Content = string.format("Buy some egg in-game and it will be automatically selected!\n\n<b>Selected Egg:</b> %s\n<b>Mode:</b> %s\n<b>Quantity Hatched:</b> %s\n<b>Quantity Remaining:</b> %s\n<b>25x Insane Luck:</b> %s", selectedEgg, selectedSetting, eggsOpened, eggsRemaining, insaneLucky)})
+			eggInfo:Set({Title = "Information", Content = string.format("Buy some egg in-game and it will be automatically selected!\n\n<b>Selected Egg:</b> %s\n<b>Mode:</b> %s\n<b>Quantity Hatched:</b> %s\n<b>Coins:</b> %s\n<b>25x Insane Luck:</b> %s", selectedEgg, selectedSetting, eggsOpened, eggsRemaining, insaneLucky)})
 		end
 	end	
 	
@@ -1445,12 +1619,16 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 				if nextAreaName ~= "COMPLETED" then 
 					local areaToTeleport = Library.Directory.Areas[currentAreaName]
 					if areaToTeleport and areaToTeleport.world then
-						if Library.WorldCmds.Get() ~= areaToTeleport.world then 
-							Library.WorldCmds.Load(areaToTeleport.world)
+						local currentWorld = Library.WorldCmds.Get()
+						if currentWorld and currentWorld ~= areaToTeleport.world then 
+							local success = Library.WorldCmds.Load(areaToTeleport.world)
+							if not success then return end
 						end
 						wait(0.25)
 			
-						local areaTeleport = Library.WorldCmds.GetMap().Teleports:FindFirstChild(currentAreaName)
+						local worldMap = Library.WorldCmds.GetMap()
+						if not worldMap then return end
+						local areaTeleport = worldMap.Teleports:FindFirstChild(currentAreaName)
 						if areaTeleport then 
 							Library.Signal.Fire("Teleporting")
 							task.wait(0.25)
@@ -1569,8 +1747,14 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 					wait(1)
 				end
 
-				HumanoidRootPart.CFrame = Library.WorldCmds.GetMap().Interactive.Bank.Pad.CFrame + Vector3.new(0, 3, 0) 
-				HumanoidRootPart.CFrame = HumanoidRootPart.CFrame + (HumanoidRootPart.CFrame.LookVector * 15)
+				local mapForBank = GetMapSafe()
+				if mapForBank and mapForBank:FindFirstChild("Interactive") and mapForBank.Interactive:FindFirstChild("Bank") and mapForBank.Interactive.Bank:FindFirstChild("Pad") then
+					HumanoidRootPart.CFrame = mapForBank.Interactive.Bank.Pad.CFrame + Vector3.new(0, 3, 0)
+					HumanoidRootPart.CFrame = HumanoidRootPart.CFrame + (HumanoidRootPart.CFrame.LookVector * 15)
+				else
+					BankError("Bank pad not found on map")
+					return
+				end
 				
 				wait(0.5)
 				
@@ -2310,7 +2494,7 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 						local currentProgress, currentMission = unpack(IsHardcore and saveData.Hardcore.HackerPortalProgress or saveData.HackerPortalProgress)
 						if currentMission < 0 then
 							-- Start quest
-							local map = Library.WorldCmds.GetMap()
+							local map = GetMapSafe()
 							local interactive = nil
 							if map then interactive = map:FindFirstChild("Interactive") end
 							
@@ -2337,7 +2521,7 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 						if currentMission > -1 then
 							local totalToComplete = Library.Shared.HackerPortalQuests[currentMission]
 							if totalToComplete and tonumber(totalToComplete) and currentProgress >= totalToComplete then
-								local map = Library.WorldCmds.GetMap()
+								local map = GetMapSafe()
 								local interactive = nil
 								if map then interactive = map:FindFirstChild("Interactive") end
 								
@@ -2380,7 +2564,7 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 						wait(1)
 					end
 					
-					local map = Library.WorldCmds.GetMap()
+					local map = GetMapSafe()
 					local allGates = nil
 					if map then allGates = map:FindFirstChild("Gates") end
 					
@@ -2417,7 +2601,8 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 								wait(1)
 							end
 							-- TELEPORT TO THE NEW AREA
-							local areaTeleport = Library.WorldCmds.GetMap().Teleports:FindFirstChild(nextAreaName);
+							local _map = GetMapSafe()
+							local areaTeleport = _map and _map:FindFirstChild("Teleports") and _map.Teleports:FindFirstChild(nextAreaName) or nil
 							if areaTeleport then 
 								Library.Signal.Fire("Teleporting")
 								task.wait(0.25)
