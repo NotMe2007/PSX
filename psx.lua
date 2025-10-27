@@ -2,7 +2,7 @@
 -- Pet Simulator X GUI
 
 -- For Preston:
--- Sorry for any incovenience I don't make any malicous script like mail/bank stealers, trade scam and this shit, just auto-farm and QoL scripts, feel free to use this repo to fix any vulnerability on your game
+-- Sorry for any inconvenience. I don't make any malicious scripts like mail/bank stealers, trade scam, and this shit, just auto-farm and QoL scripts, feel free to use this repo to fix any vulnerability on your game
 --]]
 
 
@@ -10,9 +10,9 @@
 
 
 --[[
-loadstring(game:HttpGet("https://raw.githubusercontent.com/NotMe2007/PSX/refs/heads/main/psx.lua"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/NotMe2007/PSX/refs/heads/main/psxb.lua"))()
 -- TODO LIST:
--- • Huge notifier on Discord Webhook (its ez but I'm lazy)
+-- • Huge notifier on Discord Webhook (it's ez but I'm lazy)
 -- • Auto quest
 -- • Improve Bank Index with "Auto buy storage upgrades" (+ withdraw needed diamonds from bank)
 --]]
@@ -20,14 +20,14 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/NotMe2007/PSX/refs/he
 
 -- Important Variables
 local SCRIPT_NAME = "Rafa PSX GUI"
-local SCRIPT_VERSION = "v0.3" -- Hey rafa remember to change it before updating lmao
+local SCRIPT_VERSION = "v0.3" -- Hey Rafa, remember to change it before updating lmao
 
 -- Version Control & Auto-Disable System
 if _G.PSX_LOADED and _G.PSX_VERSION then
-    -- Disable all features from old version
+    -- Disable all features from the old version
     if _G.PSX_DISABLE_FUNC then
         _G.PSX_DISABLE_FUNC()
-    end
+	end
     
     -- Clean up old version
     task.wait(1)
@@ -42,7 +42,7 @@ end
 _G.PSX_VERSION = SCRIPT_VERSION
 _G.PSX_LOADED = true
 
--- Create disable function for this version
+-- Create a disable function for this version
 _G.PSX_DISABLE_FUNC = function()
     pcall(function()
         -- Disable all toggles
@@ -1102,21 +1102,51 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 
 	coroutine.wrap(function()
 		while true do 
+			local success, err = pcall(function()
 				if enableAutoFarm and not ScriptIsCurrentlyBusy then 
-					CoinsTable = debug.getupvalue(getsenv(LocalPlayer.PlayerScripts.Scripts.Game.Coins).DestroyAllCoins, 1)
-					RenderedPets = debug.getupvalue(getsenv(LocalPlayer.PlayerScripts.Scripts.Game.Pets).NetworkUpdate, 1)
+					local coinsScript = getsenv(LocalPlayer.PlayerScripts.Scripts.Game.Coins)
+					local petsScript = getsenv(LocalPlayer.PlayerScripts.Scripts.Game.Pets)
+					
+					if not coinsScript or not petsScript then 
+						wait(1)
+						return
+					end
+					
+					CoinsTable = debug.getupvalue(coinsScript.DestroyAllCoins, 1)
+					RenderedPets = debug.getupvalue(petsScript.NetworkUpdate, 1)
+					
+					if not CoinsTable or not RenderedPets then
+						wait(1)
+						return
+					end
 					
 					if AutoFarm_FastMode then 
 
+						if not CoinsTable then return end
 						local foundCoins = SortCoinsByPriorityFastMode(CoinsTable)
 						local equippedPets = Library.PetCmds.GetEquipped()
-						if equippedPets and #equippedPets > 0 and #foundCoins > 0 then
+						if equippedPets and #equippedPets > 0 and foundCoins and #foundCoins > 0 then
 							for _, pet in pairs(equippedPets) do
-								local selectedCoin = foundCoins[1]
+								if pet and pet.uid then
+									local selectedCoin = foundCoins[1]
+									if selectedCoin and selectedCoin.coinId then
+										task.spawn(function()
+											pcall(function()
+												Library.Network.Invoke("Join Coin", selectedCoin.coinId, {pet.uid}) 
+												Library.Network.Fire("Farm Coin", selectedCoin.coinId, pet.uid)
+											end)
+										end)
+										
+										table.remove(foundCoins, 1)
+										task.wait(AutoFarm_FarmSpeed)
+									end
+								end
+								
 								task.spawn(function()
-									Library.Network.Invoke("Join Coin", selectedCoin.coinId, {pet.uid}) 
-									Library.Network.Fire("Farm Coin", selectedCoin.coinId, pet.uid)
-									
+									pcall(function()
+										Library.Network.Invoke("Join Coin", selectedCoin.coinId, {pet.uid}) 
+										Library.Network.Fire("Farm Coin", selectedCoin.coinId, pet.uid)
+									end)
 								end)
 								
 								table.remove(foundCoins, 1)
@@ -1169,6 +1199,7 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 						end
 					end
 				end
+			end)
 			wait(0.1)
 		end	
 	end)()
@@ -1377,6 +1408,60 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 	
 	
 	local eggTab = Window:CreateTab("Eggs", "13075637275", true)
+	
+	-- Egg Selection Section
+	local eggSelectionSection = eggTab:CreateSection("Available Eggs", false)
+	
+	local allEggs = {}
+	local selectedEggId = nil
+	
+	-- Create buttons for each egg
+	for eggId, eggData in pairs(Library.Directory.Eggs) do
+		if eggData and not eggData.disabled and eggData.hatchable then
+			table.insert(allEggs, {
+				id = eggId,
+				name = eggData.name,
+				cost = Library.Functions.NumberShorten(eggData.cost),
+				currency = eggData.currency
+			})
+		end
+	end
+	
+	-- Sort eggs by name
+	table.sort(allEggs, function(a, b)
+		return a.name < b.name
+	end)
+	
+	for _, eggData in ipairs(allEggs) do
+		eggTab:CreateButton({
+			Name = string.format("%s (%s %s)", eggData.name, eggData.cost, eggData.currency),
+			SectionParent = eggSelectionSection,
+			Interact = selectedEggId == eggData.id and "Selected" or "Select",
+			Callback = function()
+				selectedEggId = eggData.id
+				LastOpenEggId = eggData.id
+				SaveCustomFlag("CurrentEgg", eggData.id)
+				-- Update all egg buttons
+				for _, button in pairs(eggSelectionSection.List) do
+					if button.Button and button.Button.Name then
+						local buttonEggName = string.match(button.Button.Name, "^(.+) %(")
+						local matchingEgg = nil
+						for _, egg in ipairs(allEggs) do
+							if egg.name == buttonEggName then
+								matchingEgg = egg
+								break
+							end
+						end
+						if matchingEgg then
+							button:Set(nil, matchingEgg.id == selectedEggId and "Selected" or "Select")
+						end
+					end
+				end
+			end
+		})
+	end
+
+	-- Egg Hatching Section
 	local hatchingSection = eggTab:CreateSection("Egg Hatching", false)
 	local eggInfo = eggTab:CreateParagraph({Title = "Information", Content = "Buy some egg in-game and it will be automatically selected!\nSelected Egg: %s\nMode: %s\nQuantity Hatched: %s\nQuantity Remaining: %s\n25x Insane Luck: %s\n\n\n\naaa"}, hatchingSection)
 	
@@ -1390,6 +1475,24 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 	AddCustomFlag("CurrentHatchSettings", "Normal", function(newValue) 
 		LastHatchSetting = newValue
 	end)
+	
+	-- Manual Hatch Button
+	eggTab:CreateButton({
+		Name = "Hatch Selected Egg",
+		SectionParent = hatchingSection,
+		Callback = function()
+			if not selectedEggId then
+				Library.Message.New("Please select an egg first!")
+				return
+			end
+			local tripleHatch = LastHatchSetting == "Triple"
+			local octupleHatch = LastHatchSetting == "Octuple"
+			local success, errorMessage = HatchEgg(selectedEggId, tripleHatch, octupleHatch, true)
+			if not success and errorMessage then
+				Library.Message.New(errorMessage)
+			end
+		end
+	})
 	
 	local EnableAutoHatch = false
 	eggTab:CreateToggle({
@@ -1455,7 +1558,7 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 			local eggsOpened = Library.Functions.Commas(playerEggsOpened and playerEggsOpened[LastOpenEggId] and playerEggsOpened[LastOpenEggId] or 0)
 			local eggsRemaining = Library.Functions.Commas(Library.Directory.Eggs[selectedEgg] and math.floor(playerData[Library.Directory.Eggs[selectedEgg].currency] / Library.Directory.Eggs[selectedEgg].cost) > 0 and math.floor(playerData[Library.Directory.Eggs[selectedEgg].currency] / Library.Directory.Eggs[selectedEgg].cost) or 0)
 			local insaneLucky = serverBoosts and serverBoosts["Insane Luck"] and tostring(serverBoosts["Insane Luck"].totalTimeLeft) .. "s" or "Inactive" 
-			eggInfo:Set({Title = "Information", Content = string.format("Buy some egg in-game and it will be automatically selected!\n\n<b>Selected Egg:</b> %s\n<b>Mode:</b> %s\n<b>Quantity Hatched:</b> %s\n<b>Quantity Remaining:</b> %s\n<b>25x Insane Luck:</b> %s", selectedEgg, selectedSetting, eggsOpened, eggsRemaining, insaneLucky)})
+			eggInfo:Set({Title = "Information", Content = string.format("Buy some egg in-game and it will be automatically selected!\n\n<b>Selected Egg:</b> %s\n<b>Mode:</b> %s\n<b>Quantity Hatched:</b> %s\n<b>Coins:</b> %s\n<b>25x Insane Luck:</b> %s", selectedEgg, selectedSetting, eggsOpened, eggsRemaining, insaneLucky)})
 		end
 	end	
 	
@@ -2587,4 +2690,3 @@ if game.PlaceId == 6284583030 or game.PlaceId == 10321372166 or game.PlaceId == 
 		end
 	end)
 end
-
