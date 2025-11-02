@@ -2,7 +2,7 @@
 -- Pet Simulator X GUI
 
 -- For Preston:
--- Sorry for any inconvenience. I don't make any malicious scripts like mail/bank stealers, trade scam, and this shit, just auto-farm and QoL scripts, feel free to use this repo to fix any vulnerability on your game
+-- Sorry for any inconvenience. I don't make any malicious scripts like mail/bank stealers, trade scam, and this shit, just auto-farm and quality of life scripts, feel free to use this repo to fix any vulnerability on your game
 --]]
 
 
@@ -20,7 +20,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/NotMe2007/PSX/refs/he
 
 -- Important Variables
 local SCRIPT_NAME = "Rafa PSX GUI"
-local SCRIPT_VERSION = "v0.3" -- Hey Rafa, remember to change it before updating lmao
+local SCRIPT_VERSION = "v0.4" -- Hey Rafa, remember to change it before updating lmao
 
 -- Version Control & Auto-Disable System
 if _G.PSX_LOADED and _G.PSX_VERSION then
